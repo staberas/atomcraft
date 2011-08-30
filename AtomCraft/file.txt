@@ -1,0 +1,195 @@
+package mygame;
+
+import com.jme3.app.SimpleApplication;
+import com.jme3.bullet.control.RigidBodyControl;
+import com.jme3.collision.CollisionResult;
+import com.jme3.collision.CollisionResults;
+import com.jme3.font.BitmapText;
+import com.jme3.input.KeyInput;
+import com.jme3.input.controls.ActionListener;
+import com.jme3.input.controls.KeyTrigger;
+import com.jme3.input.controls.MouseButtonTrigger;
+import com.jme3.light.DirectionalLight;
+import com.jme3.renderer.RenderManager;
+import com.jme3.scene.Node;
+import com.jme3.material.Material;
+import com.jme3.math.ColorRGBA;
+import com.jme3.math.Ray;
+import com.jme3.math.Vector3f;
+import com.jme3.renderer.queue.RenderQueue.ShadowMode;
+import com.jme3.scene.Geometry;
+import com.jme3.scene.shape.Box;
+import com.jme3.scene.shape.Sphere;
+import com.jme3.texture.Texture;
+import com.jme3.util.TangentBinormalGenerator;
+
+
+/**
+ * test
+ * @author normenhansen
+ */
+public class Atomcraft extends SimpleApplication {
+
+    public static void main(String[] args) {
+        Atomcraft app = new Atomcraft();
+        app.start();
+    }
+    
+    protected Geometry player;
+    
+    Node jupipose;
+    Node pivot;
+    Geometry mark;
+    
+    
+    @Override
+    public void simpleInitApp() {
+       // initCrossHairs(); // a "+" in the middle of the screen to help aiming
+        initKeys();       // load custom key mappings
+        initMark();       // a red sphere to mark the hit
+        
+      /**  Box b = new Box(Vector3f.ZERO, 1, 1, 1);
+        Geometry geom = new Geometry("Box", b);
+        geom.updateModelBound();
+
+        Material mat = new Material(assetManager, "Common/MatDefs/Misc/SolidColor.j3md");
+        mat.setColor("m_Color", ColorRGBA.Blue);
+        geom.setMaterial(mat);
+        int attachChild = rootNode.attachChild(geom);
+    */
+        //(x,y,x) and f = float
+        Box box1 = new Box( new Vector3f(-3,1,1), 1f,1f,1f);
+        Geometry blue = new Geometry("Box", box1);
+        Material mat1 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        Texture tex_ml = assetManager.loadTexture("Textures/moontexture.jpg");
+        mat1.setTexture("ColorMap", tex_ml);
+        blue.setMaterial(mat1);
+       
+
+        // create a red sphere straight next the texture box one
+        Sphere box2 = new Sphere(30,30, 2f);
+        Geometry red = new Geometry("Box", box2);
+        Material mat2 = new Material(assetManager, "Common/MatDefs/Misc/SolidColor.j3md");
+        mat2.setColor("Color", ColorRGBA.Blue);
+        red.setMaterial(mat2);
+        
+        //jupiter with lighting 
+        Sphere jupi = new Sphere(90,40, 3f);
+        Geometry jupiter = new Geometry("Jupiter", jupi);
+        //Material mat3 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        TangentBinormalGenerator.generate(jupi); 
+        Material mat3 = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+        //Texture tex_jupi = assetManager.loadTexture("Textures/jupiter2_1k.jpg");
+        mat3.setTexture("DiffuseMap", assetManager.loadTexture("Textures/jupiter2_1k.jpg"));
+        //mat3.setTexture("ColorMap", tex_jupi);
+        jupiter.setMaterial(mat3);
+        mat3.setFloat("Shininess", 127f); 
+        
+            /** Must add a light to make the lit object visible! */
+       DirectionalLight sun = new DirectionalLight();
+       sun.setDirection(new Vector3f(80,80, 5).normalizeLocal());
+       sun.setColor(ColorRGBA.White);
+       rootNode.addLight(sun);
+
+                // Display a line of text with a default font
+        guiNode.detachAllChildren();
+        guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
+        BitmapText helloText = new BitmapText(guiFont, false);
+        helloText.setSize(guiFont.getCharSet().getRenderedSize());
+        helloText.setText("AtomCraft version 0.0.1");
+        helloText.setLocalTranslation(300, helloText.getLineHeight(), 0);
+        guiNode.attachChild(helloText);
+
+
+        pivot = new Node("pivot");
+        rootNode.attachChild(pivot);
+        jupipose = new Node("jupipose");
+        rootNode.attachChild(jupipose);
+        
+        //input & player
+        Box b = new Box(Vector3f.ZERO, 1, 1, 1);
+        player = new Geometry("Player", b);
+        Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        mat.setColor("Color", ColorRGBA.Blue);
+        player.setMaterial(mat);
+        rootNode.attachChild(player);
+       // initKeys(); // load my custom keybinding
+        
+       
+
+        // attach the two boxes to the *pivot* node!
+        pivot.attachChild(blue);
+        pivot.attachChild(red);
+        jupipose.attachChild(jupiter);
+        // rotate pivot node: Both boxes have rotated!
+        pivot.rotate( 0.4f , 0.4f , 0.0f );
+        jupipose.move( 10.50f, 0.28f, -5.0f );
+        jupipose.rotate( 8f , 0f , 0.0f );
+    }
+
+  /** Declaring the "Shoot" action and mapping to its triggers. */
+  private void initKeys() {
+    inputManager.addMapping("Shoot",
+      new KeyTrigger(KeyInput.KEY_SPACE), // trigger 1: spacebar
+      new MouseButtonTrigger(0));         // trigger 2: left-button click
+    inputManager.addListener(actionListener, "Shoot");
+  }
+  
+  
+     /** Defining the "Shoot" action: Determine what was hit and how to respond. */
+        private ActionListener actionListener = new ActionListener() {
+          @Override
+        public void onAction(String name, boolean keyPressed, float tpf) {
+          if (name.equals("Shoot") && !keyPressed) {
+        // 1. Reset results list.
+        CollisionResults results = new CollisionResults();
+        // 2. Aim the ray from cam loc to cam direction.
+        Ray ray = new Ray(cam.getLocation(), cam.getDirection());
+        // 3. Collect intersections between Ray and Shootables in results list.
+        pivot.collideWith(ray, results);
+        // 4. Print the results. 
+        System.out.println("----- Collisions? " + results.size() + "-----");
+        for (int i = 0; i < results.size(); i++) {
+          // For each hit, we know distance, impact point, name of geometry.
+          float dist = results.getCollision(i).getDistance();
+          Vector3f pt = results.getCollision(i).getContactPoint();
+          String hit = results.getCollision(i).getGeometry().getName();
+          System.out.println("* Collision #" + i);
+          System.out.println("  You shot " + hit + " at " + pt + ", " + dist + " wu away.");
+        }
+        // 5. Use the results (we mark the hit object)
+        if (results.size() > 0){
+          // The closest collision point is what was truly hit:
+          CollisionResult closest = results.getClosestCollision();
+          // Let's interact - we mark the hit with a red dot.
+          mark.setLocalTranslation(closest.getContactPoint());
+          rootNode.attachChild(mark);
+        } else {
+        // No hits? Then remove the red mark.
+          rootNode.detachChild(mark);
+        }
+      }
+    }
+  };
+  
+    /** A red ball that marks the last spot that was "hit" by the "shot". */
+    protected void initMark() {
+    Sphere sphere = new Sphere(30, 30, 0.2f);
+    mark = new Geometry("BOOM!", sphere);
+    Material mark_mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+    mark_mat.setColor("Color", ColorRGBA.Red);
+    mark.setMaterial(mark_mat);
+  }
+ 
+
+    @Override
+    public void simpleUpdate(float tpf) {
+        //TODO: add update code
+    }
+
+    @Override
+    public void simpleRender(RenderManager rm) {
+        //TODO: add render code
+  
+    }
+}

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--<?xml version="1.0" encoding="UTF-8"?>
+
+
+    Document   : boxes.xml
+    Created on : 6 Ιούνιος 2011, 6:42 μμ
+    Author     : STABERAS
+    Description:
+        Purpose of the document follows.
+
+
+<root>
+
+</root>
+-->
+<root>
+    <Position>0.0</Position>
+    <Position>0.0</Position>
+    <Position>10.0</Position>
+    <Position>0.0</Position>
+    <Position>0.0</Position>
+    <Position>20.0</Position>
+    <Position>0.0</Position>
+    <Position>0.0</Position>
+    <Position>30.0</Position>
+    <Position>0.0</Position>
+    <Position>0.0</Position>
+    <Position>40.0</Position>
+</root>
